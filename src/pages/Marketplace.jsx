@@ -97,13 +97,30 @@ export default function Marketplace() {
 
   const handleOpenDealRoom = async (offerId) => {
     try {
+      // Check local cache first
       const existingId = dealRoomsByOfferId[offerId];
       if (existingId) return navigate(`/deal-room/${existingId}`);
+
+      // Try to fetch existing deal room first (investor flow)
+      try {
+        const { getDealRoomByOffer } = await import("../services/api");
+        const res = await getDealRoomByOffer(offerId);
+        const dealId = res?.data?.id;
+        if (dealId) {
+          setDealRoomsByOfferId((prev) => ({ ...prev, [offerId]: dealId }));
+          return navigate(`/deal-room/${dealId}`);
+        }
+      } catch {
+        // Deal room doesn't exist yet — try creating (seller flow)
+      }
+
+      // Fallback: create deal room (seller)
       const dealRes = await createDealRoom(offerId);
       const dealId  = dealRes?.data?.id;
-      if (!dealId) throw new Error("Deal room id missing from response.");
+      if (!dealId) throw new Error("Deal room id missing.");
       setDealRoomsByOfferId((prev) => ({ ...prev, [offerId]: dealId }));
       navigate(`/deal-room/${dealId}`);
+
     } catch (err) {
       alert(err.response?.data?.detail || err.message || "Failed to open deal room.");
     }
@@ -530,11 +547,11 @@ export default function Marketplace() {
                         gap: 8, marginBottom: 14
                       }}>
                         {[
-                          { label: "Location",  value: l.business_location || "—" },
-                          { label: "Revenue",   value: l.business_revenue
-                            ? `₦${(l.business_revenue / 1e6).toFixed(1)}M` : "Undisclosed" },
-                          { label: "Employees", value: l.business_employees || "—" },
-                          { label: "Founded",   value: l.business_founded   || "—" },
+                          { label: "Location",   value: l.business_location || "—" },
+                          { label: "Valuation",  value: l.latest_valuation
+                            ? `₦${(l.latest_valuation / 1e6).toFixed(1)}M` : "Not yet valued" },
+                          { label: "Employees",  value: l.business_employees || "—" },
+                          { label: "Founded",    value: l.business_founded   || "—" },
                         ].map((item) => (
                           <div key={item.label} style={{
                             background: "#f8fafc", padding: "8px 12px",
@@ -801,7 +818,9 @@ export default function Marketplace() {
                             Offer on Listing #{o.listing_id}
                           </div>
                           <div style={{ fontSize: 12, color: "#94a3b8" }}>
-                            From Investor #{o.investor_id} · {new Date(o.created_at).toLocaleDateString()}
+                            From <strong style={{ color: "#0f172a" }}>
+                              {o.investor_name || `Investor #${o.investor_id}`}
+                            </strong> · {new Date(o.created_at).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
@@ -997,6 +1016,19 @@ export default function Marketplace() {
                             fontSize: 14, color: "#334155", lineHeight: 1.6, margin: 0
                           }}>{o.message}</p>
                         </div>
+                      )}
+                      {o.status === "accepted" && (
+                        <button onClick={() => handleOpenDealRoom(o.id)} style={{
+                          padding: "10px 20px",
+                          background: "linear-gradient(135deg, #1d4ed8, #2563eb)",
+                          color: "white", border: "none", borderRadius: 8,
+                          fontSize: 13, fontWeight: 700, cursor: "pointer",
+                          boxShadow: "0 4px 12px rgba(37,99,235,0.3)",
+                          display: "flex", alignItems: "center", gap: 7
+                        }}>
+                          <BarChartIcon size={14} color="white" />
+                          Open Deal Room →
+                        </button>
                       )}
                     </div>
                   </div>

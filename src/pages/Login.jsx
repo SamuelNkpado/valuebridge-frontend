@@ -93,9 +93,14 @@ export default function Login() {
             textDecoration: "none"
           }}>
             <img
-              src="/logo.png"
+              src="/valuebridge_logo_dark-removebg-preview.png"
               alt="ValueBridge"
-              style={{ height: 36, objectFit: "contain" }}
+              style={{
+                height: 36,
+                objectFit: "contain",
+                mixBlendMode: "screen",
+                filter: "brightness(1.1) contrast(1.1)"
+              }}
               onError={(e) => {
                 e.target.style.display = "none";
                 e.target.nextSibling.style.display = "flex";

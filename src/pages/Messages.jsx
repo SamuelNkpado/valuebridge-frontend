@@ -6,14 +6,14 @@ import { MessageIcon, ArrowRightIcon, UsersIcon } from "../components/Icons";
 
 export default function Messages() {
   const { user } = useAuth();
-  const [messages, setMessages]       = useState([]);
+  const [messages, setMessages]             = useState([]);
   const [selectedContact, setSelectedContact] = useState(null);
-  const [content, setContent]         = useState("");
-  const [sending, setSending]         = useState(false);
-  const [loading, setLoading]         = useState(true);
-  const [showNewMsg, setShowNewMsg]   = useState(false);
+  const [content, setContent]               = useState("");
+  const [sending, setSending]               = useState(false);
+  const [loading, setLoading]               = useState(true);
+  const [showNewMsg, setShowNewMsg]         = useState(false);
   const [newRecipientId, setNewRecipientId] = useState("");
-  const [newContent, setNewContent]   = useState("");
+  const [newContent, setNewContent]         = useState("");
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -26,18 +26,22 @@ export default function Messages() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, selectedContact]);
 
-  // Build unique contacts from message history
+  // Build unique contacts from message history — using real names
   const contacts = (() => {
     const map = {};
     messages.forEach((m) => {
-      const otherId = m.sender_id === user?.id ? m.receiver_id : m.sender_id;
-      const isMe = m.sender_id === user?.id;
+      const otherId   = m.sender_id === user?.id ? m.receiver_id : m.sender_id;
+      const otherName = m.sender_id === user?.id ? m.receiver_name : m.sender_name;
       if (!map[otherId]) {
         map[otherId] = {
-          id: otherId,
+          id:          otherId,
+          name:        otherName || `User #${otherId}`,
+          initials:    otherName
+            ? otherName.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2)
+            : "?",
           lastMessage: m.content,
-          lastDate: m.created_at,
-          unread: 0
+          lastDate:    m.created_at,
+          unread:      0,
         };
       } else {
         if (new Date(m.created_at) > new Date(map[otherId].lastDate)) {
@@ -45,7 +49,7 @@ export default function Messages() {
           map[otherId].lastDate    = m.created_at;
         }
       }
-      if (!isMe && !m.is_read) map[otherId].unread++;
+      if (m.sender_id !== user?.id && !m.is_read) map[otherId].unread++;
     });
     return Object.values(map).sort(
       (a, b) => new Date(b.lastDate) - new Date(a.lastDate)
@@ -55,7 +59,7 @@ export default function Messages() {
   // Messages in current conversation
   const conversation = messages.filter((m) =>
     selectedContact &&
-    ((m.sender_id === user?.id && m.receiver_id === selectedContact.id) ||
+    ((m.sender_id === user?.id   && m.receiver_id === selectedContact.id) ||
      (m.sender_id === selectedContact.id && m.receiver_id === user?.id))
   ).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
@@ -64,10 +68,7 @@ export default function Messages() {
     if (!content.trim() || !selectedContact) return;
     setSending(true);
     try {
-      await sendMessage({
-        receiver_id: selectedContact.id,
-        content: content.trim()
-      });
+      await sendMessage({ receiver_id: selectedContact.id, content: content.trim() });
       const updated = await getMessages();
       setMessages(updated.data);
       setContent("");
@@ -90,7 +91,21 @@ export default function Messages() {
       setNewRecipientId("");
       setNewContent("");
       // Auto-select the new contact
-      setSelectedContact({ id: parseInt(newRecipientId) });
+      const newContact = updated.data.find((m) =>
+        m.receiver_id === parseInt(newRecipientId) ||
+        m.sender_id   === parseInt(newRecipientId)
+      );
+      if (newContact) {
+        const otherId   = newContact.sender_id === user?.id ? newContact.receiver_id : newContact.sender_id;
+        const otherName = newContact.sender_id === user?.id ? newContact.receiver_name : newContact.sender_name;
+        setSelectedContact({
+          id:       otherId,
+          name:     otherName || `User #${otherId}`,
+          initials: otherName
+            ? otherName.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2)
+            : "?",
+        });
+      }
     } catch (err) {
       alert(err.response?.data?.detail || "Failed to send. Check the user ID.");
     } finally { setSending(false); }
@@ -98,13 +113,16 @@ export default function Messages() {
 
   const formatTime = (dateStr) => {
     const date = new Date(dateStr);
-    const now   = new Date();
-    const diff  = now - date;
+    const diff  = Date.now() - date;
     if (diff < 60000)    return "Just now";
     if (diff < 3600000)  return `${Math.floor(diff / 60000)}m ago`;
     if (diff < 86400000) return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     return date.toLocaleDateString();
   };
+
+  const myInitials = user?.full_name
+    ? user.full_name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2)
+    : "Me";
 
   return (
     <Layout
@@ -136,16 +154,13 @@ export default function Messages() {
             background: "#ffffff", borderRadius: 16, width: "100%", maxWidth: 440,
             boxShadow: "0 32px 80px rgba(0,0,0,0.3)", overflow: "hidden"
           }} onClick={(e) => e.stopPropagation()}>
-
             <div style={{
               background: "linear-gradient(135deg, #0a1628, #1e3a5f)",
               padding: "20px 24px",
               display: "flex", justifyContent: "space-between", alignItems: "center"
             }}>
               <div>
-                <div style={{ color: "white", fontWeight: 700, fontSize: 16 }}>
-                  New Message
-                </div>
+                <div style={{ color: "white", fontWeight: 700, fontSize: 16 }}>New Message</div>
                 <div style={{ color: "#93c5fd", fontSize: 13, marginTop: 3 }}>
                   Send a message to any user on ValueBridge
                 </div>
@@ -157,9 +172,7 @@ export default function Messages() {
                 display: "flex", alignItems: "center", justifyContent: "center"
               }}>✕</button>
             </div>
-
             <div style={{ padding: 24 }}>
-              {/* How to find user ID tip */}
               <div style={{
                 background: "#eff6ff", borderRadius: 8, padding: "12px 14px",
                 marginBottom: 18, border: "1px solid #bfdbfe"
@@ -168,11 +181,10 @@ export default function Messages() {
                   💡 How to find a User ID
                 </div>
                 <div style={{ fontSize: 12, color: "#3b82f6", lineHeight: 1.6 }}>
-                  When an investor makes an offer on your listing, their User ID appears
-                  in your "Offers Received" tab in the Marketplace. Use that ID to message them directly.
+                  When an investor makes an offer, their User ID appears in your
+                  "Offers Received" tab. Use that ID to message them directly.
                 </div>
               </div>
-
               <form onSubmit={handleNewMessage}>
                 <div style={{ marginBottom: 14 }}>
                   <label style={{
@@ -233,11 +245,9 @@ export default function Messages() {
                   <button type="submit" disabled={sending} style={{
                     flex: 1, padding: "13px",
                     background: sending
-                      ? "#94a3b8"
-                      : "linear-gradient(135deg, #1d4ed8, #2563eb)",
+                      ? "#94a3b8" : "linear-gradient(135deg, #1d4ed8, #2563eb)",
                     color: "white", border: "none", borderRadius: 8,
                     fontWeight: 700, fontSize: 15, cursor: "pointer",
-                    boxShadow: sending ? "none" : "0 4px 14px rgba(37,99,235,0.3)",
                     display: "flex", alignItems: "center",
                     justifyContent: "center", gap: 8
                   }}>
@@ -258,33 +268,30 @@ export default function Messages() {
       {/* ── MAIN CHAT LAYOUT ──────────────────────── */}
       <div style={{
         display: "grid", gridTemplateColumns: "300px 1fr",
-        gap: 0, height: "calc(100vh - 180px)", minHeight: 500,
+        height: "calc(100vh - 180px)", minHeight: 500,
         background: "#ffffff", borderRadius: 14,
         border: "1px solid #e2e8f0", overflow: "hidden",
         boxShadow: "0 1px 4px rgba(15,23,42,0.06)"
       }}>
 
-        {/* ── LEFT: CONTACTS LIST ───────────────── */}
+        {/* ── LEFT: CONTACTS ────────────────────── */}
         <div style={{
           borderRight: "1px solid #f1f5f9",
           display: "flex", flexDirection: "column",
           background: "#fafafa"
         }}>
-          {/* Contacts header */}
           <div style={{
-            padding: "16px 18px",
-            borderBottom: "1px solid #f1f5f9",
+            padding: "16px 18px", borderBottom: "1px solid #f1f5f9",
             background: "#ffffff"
           }}>
-            <div style={{
-              fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2
-            }}>Conversations</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>
+              Conversations
+            </div>
             <div style={{ fontSize: 12, color: "#94a3b8" }}>
               {contacts.length} contact{contacts.length !== 1 ? "s" : ""}
             </div>
           </div>
 
-          {/* Contact list */}
           <div style={{ flex: 1, overflowY: "auto" }}>
             {loading ? (
               <div style={{
@@ -294,21 +301,17 @@ export default function Messages() {
               }}>
                 <div style={{
                   width: 24, height: 24,
-                  border: "2px solid #dbeafe",
-                  borderTopColor: "#2563eb", borderRadius: "50%",
-                  animation: "spin 0.7s linear infinite"
+                  border: "2px solid #dbeafe", borderTopColor: "#2563eb",
+                  borderRadius: "50%", animation: "spin 0.7s linear infinite"
                 }} />
                 <span style={{ fontSize: 13, color: "#94a3b8" }}>Loading...</span>
               </div>
             ) : contacts.length === 0 ? (
-              <div style={{
-                padding: "40px 16px", textAlign: "center"
-              }}>
+              <div style={{ padding: "40px 16px", textAlign: "center" }}>
                 <div style={{
                   width: 48, height: 48, background: "#f1f5f9",
-                  borderRadius: 12, display: "flex",
-                  alignItems: "center", justifyContent: "center",
-                  margin: "0 auto 12px"
+                  borderRadius: 12, display: "flex", alignItems: "center",
+                  justifyContent: "center", margin: "0 auto 12px"
                 }}>
                   <UsersIcon size={22} color="#94a3b8" />
                 </div>
@@ -346,7 +349,7 @@ export default function Messages() {
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      {/* Avatar */}
+                      {/* Avatar with initials */}
                       <div style={{
                         width: 40, height: 40, flexShrink: 0,
                         background: active
@@ -354,19 +357,20 @@ export default function Messages() {
                           : "linear-gradient(135deg, #334155, #475569)",
                         borderRadius: "50%", display: "flex",
                         alignItems: "center", justifyContent: "center",
-                        color: "white", fontWeight: 800, fontSize: 15
+                        color: "white", fontWeight: 800, fontSize: 14
                       }}>
-                        {contact.id}
+                        {contact.initials}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           display: "flex", justifyContent: "space-between",
                           alignItems: "center", marginBottom: 3
                         }}>
+                          {/* Real name shown here */}
                           <span style={{
                             fontSize: 13, fontWeight: 700,
                             color: active ? "#1d4ed8" : "#0f172a"
-                          }}>User #{contact.id}</span>
+                          }}>{contact.name}</span>
                           <span style={{ fontSize: 11, color: "#94a3b8" }}>
                             {formatTime(contact.lastDate)}
                           </span>
@@ -384,8 +388,7 @@ export default function Messages() {
                           width: 18, height: 18, background: "#1d4ed8",
                           borderRadius: "50%", display: "flex",
                           alignItems: "center", justifyContent: "center",
-                          fontSize: 10, fontWeight: 700, color: "white",
-                          flexShrink: 0
+                          fontSize: 10, fontWeight: 700, color: "white", flexShrink: 0
                         }}>{contact.unread}</div>
                       )}
                     </div>
@@ -395,7 +398,6 @@ export default function Messages() {
             )}
           </div>
 
-          {/* New message button */}
           <div style={{ padding: "12px 16px", borderTop: "1px solid #f1f5f9" }}>
             <button onClick={() => setShowNewMsg(true)} style={{
               width: "100%", padding: "10px",
@@ -411,10 +413,9 @@ export default function Messages() {
           </div>
         </div>
 
-        {/* ── RIGHT: CHAT WINDOW ────────────────── */}
+        {/* ── RIGHT: CHAT WINDOW ─────────────────── */}
         <div style={{ display: "flex", flexDirection: "column" }}>
           {!selectedContact ? (
-            /* Empty state */
             <div style={{
               flex: 1, display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center",
@@ -423,10 +424,9 @@ export default function Messages() {
               <div style={{
                 width: 80, height: 80,
                 background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
-                border: "1px solid #bfdbfe",
-                borderRadius: 20, display: "flex",
-                alignItems: "center", justifyContent: "center",
-                marginBottom: 20
+                border: "1px solid #bfdbfe", borderRadius: 20,
+                display: "flex", alignItems: "center",
+                justifyContent: "center", marginBottom: 20
               }}>
                 <MessageIcon size={36} color="#1d4ed8" />
               </div>
@@ -434,8 +434,7 @@ export default function Messages() {
                 Select a conversation
               </h3>
               <p style={{ color: "#64748b", fontSize: 15, maxWidth: 300, lineHeight: 1.6 }}>
-                Choose a contact from the left to view your messages,
-                or start a new conversation.
+                Choose a contact from the left or start a new conversation.
               </p>
               <button onClick={() => setShowNewMsg(true)} style={{
                 marginTop: 20, padding: "12px 28px",
@@ -451,13 +450,11 @@ export default function Messages() {
             </div>
           ) : (
             <>
-              {/* Chat header */}
+              {/* Chat header — shows real name */}
               <div style={{
-                padding: "14px 20px",
-                borderBottom: "1px solid #f1f5f9",
-                background: "#ffffff",
-                display: "flex", alignItems: "center",
-                justifyContent: "space-between"
+                padding: "14px 20px", borderBottom: "1px solid #f1f5f9",
+                background: "#ffffff", display: "flex",
+                alignItems: "center", justifyContent: "space-between"
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{
@@ -465,13 +462,13 @@ export default function Messages() {
                     background: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
                     borderRadius: "50%", display: "flex",
                     alignItems: "center", justifyContent: "center",
-                    color: "white", fontWeight: 800, fontSize: 15
+                    color: "white", fontWeight: 800, fontSize: 14
                   }}>
-                    {selectedContact.id}
+                    {selectedContact.initials}
                   </div>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>
-                      User #{selectedContact.id}
+                      {selectedContact.name}
                     </div>
                     <div style={{ fontSize: 12, color: "#94a3b8" }}>
                       {conversation.length} message{conversation.length !== 1 ? "s" : ""}
@@ -506,6 +503,7 @@ export default function Messages() {
                 ) : (
                   conversation.map((m) => {
                     const isMe = m.sender_id === user?.id;
+                    const bubbleName = isMe ? "You" : (m.sender_name || selectedContact.name);
                     return (
                       <div key={m.id} style={{
                         display: "flex",
@@ -517,11 +515,23 @@ export default function Messages() {
                             background: "linear-gradient(135deg, #475569, #334155)",
                             borderRadius: "50%", display: "flex",
                             alignItems: "center", justifyContent: "center",
-                            color: "white", fontSize: 12, fontWeight: 700,
+                            color: "white", fontSize: 11, fontWeight: 700,
                             marginRight: 8, alignSelf: "flex-end"
-                          }}>{m.sender_id}</div>
+                          }}>
+                            {selectedContact.initials}
+                          </div>
                         )}
                         <div style={{ maxWidth: "65%" }}>
+                          {/* Name label above bubble */}
+                          <div style={{
+                            fontSize: 11, color: "#94a3b8",
+                            marginBottom: 3,
+                            textAlign: isMe ? "right" : "left",
+                            paddingLeft: isMe ? 0 : 4,
+                            paddingRight: isMe ? 4 : 0
+                          }}>
+                            {bubbleName}
+                          </div>
                           <div style={{
                             padding: "10px 14px",
                             background: isMe
@@ -541,7 +551,8 @@ export default function Messages() {
                           </div>
                           <div style={{
                             fontSize: 11, color: "#94a3b8",
-                            marginTop: 4, textAlign: isMe ? "right" : "left",
+                            marginTop: 4,
+                            textAlign: isMe ? "right" : "left",
                             paddingLeft: isMe ? 0 : 4,
                             paddingRight: isMe ? 4 : 0
                           }}>
@@ -554,9 +565,9 @@ export default function Messages() {
                             background: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
                             borderRadius: "50%", display: "flex",
                             alignItems: "center", justifyContent: "center",
-                            color: "white", fontSize: 12, fontWeight: 700,
+                            color: "white", fontSize: 11, fontWeight: 700,
                             marginLeft: 8, alignSelf: "flex-end"
-                          }}>{user?.full_name?.charAt(0)}</div>
+                          }}>{myInitials}</div>
                         )}
                       </div>
                     );
@@ -565,22 +576,21 @@ export default function Messages() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Message input */}
+              {/* Input */}
               <form onSubmit={handleSend} style={{
-                padding: "14px 20px",
-                borderTop: "1px solid #f1f5f9",
-                background: "#ffffff",
-                display: "flex", gap: 10, alignItems: "flex-end"
+                padding: "14px 20px", borderTop: "1px solid #f1f5f9",
+                background: "#ffffff", display: "flex", gap: 10, alignItems: "flex-end"
               }}>
                 <textarea
                   style={{
                     flex: 1, padding: "12px 16px",
                     border: "1.5px solid #e2e8f0", borderRadius: 10,
                     fontSize: 14, outline: "none", background: "#f8fafc",
-                    color: "#0f172a", resize: "none", minHeight: 44, maxHeight: 120,
-                    lineHeight: 1.5, transition: "border-color 0.2s, box-shadow 0.2s"
+                    color: "#0f172a", resize: "none",
+                    minHeight: 44, maxHeight: 120, lineHeight: 1.5,
+                    transition: "border-color 0.2s"
                   }}
-                  placeholder={`Message User #${selectedContact.id}...`}
+                  placeholder={`Message ${selectedContact.name}...`}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   onFocus={(e) => {
@@ -625,11 +635,9 @@ export default function Messages() {
                   )}
                 </button>
               </form>
-
-              {/* Keyboard hint */}
               <div style={{
-                padding: "6px 20px 10px",
-                fontSize: 11, color: "#94a3b8", background: "#ffffff"
+                padding: "6px 20px 10px", fontSize: 11,
+                color: "#94a3b8", background: "#ffffff"
               }}>
                 Press <strong>Enter</strong> to send · <strong>Shift+Enter</strong> for new line
               </div>

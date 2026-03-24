@@ -54,6 +54,7 @@ export default function DealRoom() {
   const [docDesc, setDocDesc]   = useState("");
   const [showNDA, setShowNDA]   = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [closedAmount, setClosedAmount] = useState("");
 
   const load = useCallback(() => {
     getDealRoom(id)
@@ -103,10 +104,11 @@ export default function DealRoom() {
   const handleStageUpdate = async (stage) => {
     setUpdating(true);
     try {
-      await updateDealStage(id, stage);
+      await updateDealStage(id, stage, stage === "closed" ? parseFloat(closedAmount) : null);
       load();
-    } catch { alert("Failed to update stage."); }
-    finally { setUpdating(false); }
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed to update stage.");
+    } finally { setUpdating(false); }
   };
 
   const handleNDA = async () => {
@@ -320,37 +322,80 @@ export default function DealRoom() {
           })}
         </div>
 
-        {/* Current stage description */}
+        {/* Current stage info */}
         <div style={{
           marginTop: 20, padding: "12px 16px",
           background: "#eff6ff", borderRadius: 8,
-          border: "1px solid #bfdbfe",
-          display: "flex", justifyContent: "space-between", alignItems: "center"
+          border: "1px solid #bfdbfe"
         }}>
-          <div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>
-              Current: {STAGES[currentStageIdx]?.label}
-            </span>
-            <span style={{ fontSize: 12, color: "#3b82f6", marginLeft: 8 }}>
-              — {STAGES[currentStageIdx]?.desc}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#1d4ed8" }}>
+                Current: {STAGES[currentStageIdx]?.label}
+              </span>
+              <span style={{ fontSize: 12, color: "#3b82f6", marginLeft: 8 }}>
+                — {STAGES[currentStageIdx]?.desc}
+              </span>
+            </div>
+            {isSeller && currentStageIdx < STAGES.length - 1 && (() => {
+              const nextStage = STAGES[currentStageIdx + 1];
+              const ndaRequired = ["due_diligence","term_sheet","closed"].includes(nextStage?.key);
+              const ndaBlocked  = ndaRequired && (!deal_room.nda_acknowledged_seller || !deal_room.nda_acknowledged_investor);
+              return (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                  {/* Closed amount input */}
+                  {nextStage?.key === "closed" && (
+                    <input
+                      type="number"
+                      placeholder="Final deal amount (₦)"
+                      value={closedAmount}
+                      onChange={(e) => setClosedAmount(e.target.value)}
+                      style={{
+                        padding: "7px 12px", borderRadius: 7, fontSize: 13,
+                        border: "1.5px solid #bfdbfe", outline: "none",
+                        width: 220, background: "#ffffff"
+                      }}
+                    />
+                  )}
+                  {ndaBlocked && (
+                    <div style={{ fontSize: 11, color: "#e11d48", textAlign: "right" }}>
+                      ⚠️ Both parties must sign NDA first
+                    </div>
+                  )}
+                  <button
+                    onClick={() => handleStageUpdate(nextStage.key)}
+                    disabled={updating || ndaBlocked}
+                    style={{
+                      padding: "7px 16px",
+                      background: ndaBlocked ? "#94a3b8" : "linear-gradient(135deg, #1d4ed8, #2563eb)",
+                      color: "white", border: "none", borderRadius: 7,
+                      fontSize: 12, fontWeight: 700,
+                      cursor: ndaBlocked ? "not-allowed" : "pointer",
+                      display: "flex", alignItems: "center", gap: 6
+                    }}>
+                    Advance to {nextStage?.label}
+                    <ArrowRightIcon size={12} color="white" />
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* Closed deal record */}
+        {deal_room.stage === "closed" && deal_room.closed_amount && (
+          <div style={{
+            marginTop: 12, padding: "12px 16px",
+            background: "#f0fdf4", borderRadius: 8,
+            border: "1px solid #bbf7d0",
+            display: "flex", alignItems: "center", gap: 10
+          }}>
+            <CheckCircleIcon size={18} color="#059669" />
+            <span style={{ fontSize: 14, color: "#065f46", fontWeight: 700 }}>
+              Deal closed at ₦{(deal_room.closed_amount / 1e6).toFixed(2)}M
             </span>
           </div>
-          {/* Advance stage button (seller only for most stages) */}
-          {isSeller && currentStageIdx < STAGES.length - 1 && (
-            <button onClick={() => handleStageUpdate(STAGES[currentStageIdx + 1].key)}
-              disabled={updating} style={{
-                padding: "7px 16px",
-                background: "linear-gradient(135deg, #1d4ed8, #2563eb)",
-                color: "white", border: "none", borderRadius: 7,
-                fontSize: 12, fontWeight: 700, cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 6,
-                boxShadow: "0 3px 10px rgba(37,99,235,0.3)"
-              }}>
-              Advance to {STAGES[currentStageIdx + 1]?.label}
-              <ArrowRightIcon size={12} color="white" />
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* ── TABS ──────────────────────────────────── */}
@@ -520,6 +565,37 @@ export default function DealRoom() {
               <MessageIcon size={14} color="white" />
               Open Messages
             </Link>
+          </div>
+
+          {/* Advisor assignment */}
+          <div style={{
+            gridColumn: "1 / -1",
+            background: "#ffffff", borderRadius: 14,
+            border: "1px solid #e2e8f0", padding: 24,
+            boxShadow: "0 1px 4px rgba(15,23,42,0.05)"
+          }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: "#0f172a" }}>
+              Advisor Assignment
+            </h3>
+            {deal_room.advisor_id ? (
+              <div style={{
+                padding: "14px 16px", background: "#f0fdf4",
+                border: "1px solid #bbf7d0", borderRadius: 8,
+                display: "flex", alignItems: "center", gap: 10
+              }}>
+                <CheckCircleIcon size={18} color="#059669" />
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#065f46" }}>
+                  Advisor assigned to this deal
+                </span>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: 13, color: "#64748b", marginBottom: 12 }}>
+                  Optionally assign a verified ValueBridge advisor to assist with due diligence.
+                </p>
+                <AdvisorSelector dealId={id} onAssigned={load} />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1032,5 +1108,59 @@ export default function DealRoom() {
         </div>
       )}
     </Layout>
+  );
+}
+
+function AdvisorSelector({ dealId, onAssigned }) {
+  const [advisors, setAdvisors] = useState([]);
+  const [selected, setSelected] = useState("");
+  const [assigning, setAssigning] = useState(false);
+
+  useEffect(() => {
+    import("../services/api").then(({ getAvailableAdvisors }) => {
+      getAvailableAdvisors()
+        .then((r) => setAdvisors(r.data))
+        .catch(() => {});
+    });
+  }, []);
+
+  const handleAssign = async () => {
+    if (!selected) return;
+    setAssigning(true);
+    try {
+      const { assignAdvisor } = await import("../services/api");
+      await assignAdvisor(dealId, parseInt(selected));
+      onAssigned();
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed to assign advisor.");
+    } finally { setAssigning(false); }
+  };
+
+  return (
+    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <select
+        value={selected}
+        onChange={(e) => setSelected(e.target.value)}
+        style={{
+          padding: "10px 14px", borderRadius: 8,
+          border: "1.5px solid #e2e8f0", fontSize: 14,
+          outline: "none", background: "#f8fafc", minWidth: 220
+        }}
+      >
+        <option value="">Select a verified advisor</option>
+        {advisors.map((a) => (
+          <option key={a.id} value={a.id}>{a.full_name}</option>
+        ))}
+      </select>
+      <button onClick={handleAssign} disabled={!selected || assigning} style={{
+        padding: "10px 20px",
+        background: !selected ? "#94a3b8" : "linear-gradient(135deg, #1d4ed8, #2563eb)",
+        color: "white", border: "none", borderRadius: 8,
+        fontSize: 13, fontWeight: 700,
+        cursor: !selected ? "not-allowed" : "pointer"
+      }}>
+        {assigning ? "Assigning..." : "Assign Advisor"}
+      </button>
+    </div>
   );
 }

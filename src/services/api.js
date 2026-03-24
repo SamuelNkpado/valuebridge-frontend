@@ -59,9 +59,16 @@ export const verifyUser = (id) => API.put(`/admin/users/${id}/verify`);
 export const createDealRoom   = (offerId) => API.post(`/deal-rooms/create/${offerId}`);
 export const getMyDealRooms   = () => API.get("/deal-rooms/my-deals");
 export const getDealRoom      = (id) => API.get(`/deal-rooms/${id}`);
-export const updateDealStage  = (id, stage) => API.put(`/deal-rooms/${id}/stage`, { stage });
+export const getDealRoomByOffer = (offerId) => API.get(`/deal-rooms/by-offer/${offerId}`);
+export const updateDealStage = (id, stage, closed_amount = null) =>
+  API.put(`/deal-rooms/${id}/stage`, { stage, closed_amount });
 export const acknowledgeNDA   = (id) => API.put(`/deal-rooms/${id}/acknowledge-nda`);
 export const uploadDocument   = (id, filename, file_type, description) =>
   API.post(`/deal-rooms/${id}/documents?filename=${encodeURIComponent(filename)}&file_type=${file_type}`, { description });
 export const toggleChecklist  = (dealId, itemId) => API.put(`/deal-rooms/${dealId}/checklist/${itemId}`);
 export const addChecklistItem = (dealId, item) => API.post(`/deal-rooms/${dealId}/checklist`, { item });
+
+// Advisors
+export const getAvailableAdvisors = () => API.get("/deal-rooms/advisors/available");
+export const assignAdvisor = (dealId, advisorId) =>
+  API.put(`/deal-rooms/${dealId}/assign-advisor?advisor_id=${advisorId}`);

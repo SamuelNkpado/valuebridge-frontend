@@ -305,13 +305,14 @@ export default function Landing() {
                 {/* Logo */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
                     onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-                    <img src="/logo.png" alt="ValueBridge Logo"
+                    <img
+                        src="/valuebridge_logo_dark-removebg-preview.png"
+                        alt="ValueBridge"
                         style={{
-                            height: 36,
+                            height: 38,
                             objectFit: "contain",
-                            borderRadius: 10,
-                            background: "#0a1628",
-                            filter: "brightness(0) invert(1)", // makes logo blend with dark navbar
+                            mixBlendMode: "screen",
+                            filter: "brightness(1.1) contrast(1.1)"
                         }}
                         onError={(e) => {
                             e.target.style.display = "none";
@@ -619,13 +620,13 @@ export default function Landing() {
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 32 }}>
                         <img
-                            src="https://images.unsplash.com/photo-1556761175-4b46a572b786?w=600&q=80"
-                            alt="Business owner"
+                            src="https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?w=800&auto=format&fit=crop&q=80"
+                            alt="African business team in corporate office"
                             style={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 12, filter: "brightness(0.9)" }}
                         />
                         <img
-                            src="https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600&q=80"
-                            alt="Investor"
+                            src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&auto=format&fit=crop&q=80"
+                            alt="African SME business owner"
                             style={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 12, filter: "brightness(0.9)" }}
                         />
                     </div>

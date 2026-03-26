@@ -358,7 +358,24 @@ export default function Landing() {
                 </div>
 
                 {/* Right buttons */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, position: "relative", zIndex: 99999 }}>
+                    {/* Dropdown menu */}
+                    <div style={{
+                        position: "absolute",
+                        top: "100%",
+                        right: 0,
+                        background: "#ffffff",
+                        borderRadius: 10,
+                        boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+                        border: "1px solid #e2e8f0",
+                        minWidth: 180,
+                        zIndex: 99999,
+                        overflow: "visible",
+                        padding: "8px 0",
+                        display: "none"
+                    }}>
+                        {/* dropdown items can be inserted here if needed */}
+                    </div>
                     {token ? (
                         <button onClick={() => navigate("/dashboard")} style={{
                             padding: "10px 24px",

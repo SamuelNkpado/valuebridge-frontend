@@ -2,21 +2,26 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
     DashboardIcon, BuildingIcon, BarChartIcon,
-    StoreIcon, MessageIcon, LogOutIcon
+    StoreIcon, MessageIcon, LogOutIcon, ShieldIcon
 } from "./Icons";
-
-const navItems = [
-    { path: "/dashboard", icon: <DashboardIcon size={17} />, label: "Dashboard" },
-    { path: "/businesses", icon: <BuildingIcon size={17} />, label: "My Businesses" },
-    { path: "/valuations", icon: <BarChartIcon size={17} />, label: "Valuations" },
-    { path: "/marketplace", icon: <StoreIcon size={17} />, label: "Marketplace" },
-    { path: "/messages", icon: <MessageIcon size={17} />, label: "Messages" },
-];
 
 export default function Layout({ children, title, subtitle, action }) {
     const { pathname } = useLocation();
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+
+    const navItems = [
+        { path: "/dashboard", icon: <DashboardIcon size={17} />, label: "Dashboard" },
+        { path: "/businesses", icon: <BuildingIcon size={17} />, label: "My Businesses" },
+        { path: "/valuations", icon: <BarChartIcon size={17} />, label: "Valuations" },
+        { path: "/marketplace", icon: <StoreIcon size={17} />, label: "Marketplace" },
+        { path: "/messages", icon: <MessageIcon size={17} />, label: "Messages" },
+        ...(user?.role === "admin" ? [{
+            path: "/admin",
+            icon: <ShieldIcon size={18} color="currentColor" />,
+            label: "Admin Panel"
+        }] : []),
+    ];
 
     return (
         <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc" }}>

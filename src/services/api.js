@@ -51,9 +51,14 @@ export const getValuationHistory = (id) => API.get(`/reports/valuation-history/$
 
 // Admin
 export const getAdminStats = () => API.get("/admin/stats");
+export const getAdminDashboard = () => API.get("/admin/dashboard");
+export const verifyAdvisor = (userId) => API.put(`/admin/advisors/${userId}/verify`);
 export const getAllUsers = () => API.get("/admin/users");
 export const toggleUserStatus = (id) => API.put(`/admin/users/${id}/toggle-status`);
 export const verifyUser = (id) => API.put(`/admin/users/${id}/verify`);
+
+// Marketplace
+export const getListingByToken = (token) => API.get(`/marketplace/listings/shared/${token}`);
 
 // Deal Rooms
 export const createDealRoom   = (offerId) => API.post(`/deal-rooms/create/${offerId}`);
@@ -72,3 +77,8 @@ export const addChecklistItem = (dealId, item) => API.post(`/deal-rooms/${dealId
 export const getAvailableAdvisors = () => API.get("/deal-rooms/advisors/available");
 export const assignAdvisor = (dealId, advisorId) =>
   API.put(`/deal-rooms/${dealId}/assign-advisor?advisor_id=${advisorId}`);
+
+export const confirmClose      = (id) => API.put(`/deal-rooms/${id}/confirm-close`);
+export const proposeTermSheet  = (id, data) => API.post(`/deal-rooms/${id}/term-sheet`, data);
+export const approveTermSheet  = (id, approved) => API.put(`/deal-rooms/${id}/term-sheet/approve`, { approved });
+export const confirmDocument   = (dealId, docId) => API.put(`/deal-rooms/${dealId}/documents/${docId}/confirm`);

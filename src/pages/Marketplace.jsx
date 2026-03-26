@@ -758,6 +758,39 @@ export default function Marketplace() {
                           borderRadius: 7, border: "1px solid #f1f5f9", margin: 0
                         }}>{l.description}</p>
                       )}
+
+                      {/* Share link for private/invite_only listings */}
+                      {(l.visibility === "private" || l.visibility === "invite_only") && l.share_token && (
+                        <div style={{
+                          marginTop: 12, padding: "10px 14px",
+                          background: "#eff6ff", borderRadius: 8,
+                          border: "1px solid #bfdbfe",
+                          display: "flex", alignItems: "center", justifyContent: "space-between"
+                        }}>
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#1d4ed8", marginBottom: 2 }}>
+                              Private Listing — Share Link
+                            </div>
+                            <div style={{ fontSize: 11, color: "#3b82f6" }}>
+                              Only people with this link can view it
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(
+                                `${window.location.origin}/marketplace/shared/${l.share_token}`
+                              );
+                              alert("Share link copied to clipboard!");
+                            }}
+                            style={{
+                              padding: "7px 14px", background: "#1d4ed8",
+                              color: "white", border: "none", borderRadius: 7,
+                              fontSize: 12, fontWeight: 700, cursor: "pointer"
+                            }}>
+                            Copy Link
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

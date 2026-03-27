@@ -20,7 +20,9 @@ export const loginUser = (data) => {
     const formData = new FormData();
     formData.append("username", data.email);
     formData.append("password", data.password);
-    return API.post("/auth/login", formData);
+    return API.post("/auth/login", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+    });
 };
 
 // Business

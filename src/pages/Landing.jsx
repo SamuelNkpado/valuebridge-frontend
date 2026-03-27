@@ -100,12 +100,12 @@ export default function Landing() {
                     position: "fixed", inset: 0, zIndex: 1000,
                     background: "rgba(2,8,23,0.7)", backdropFilter: "blur(6px)",
                     display: "flex", alignItems: "flex-start", justifyContent: "center",
-                    paddingTop: 80
+                    paddingTop: "40px", overflowY: "auto"
                 }} onClick={() => setModal(null)}>
                     <div style={{
                         background: "#ffffff", borderRadius: 16, width: "100%", maxWidth: 440,
-                        boxShadow: "0 32px 80px rgba(0,0,0,0.3)", overflow: "hidden",
-                        animation: "fadeUp 0.3s cubic-bezier(0.16,1,0.3,1)"
+                        maxHeight: "85vh", overflowY: "auto",
+                        boxShadow: "0 32px 80px rgba(0,0,0,0.3)"
                     }} onClick={(e) => e.stopPropagation()}>
 
                         {/* Modal Header */}
